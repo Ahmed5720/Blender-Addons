@@ -88,17 +88,36 @@ def frames_matching(action, data_path):
 
 def group_qe(_obj, action, bone, bone_prefix, order):
     """Converts only one group/bone in one action - Quaternion to euler."""
+
+    """ the correct euler angle is the angle such that euler = last_euler + delta_x, delta_y, delta_z
+        this assumes last euler is correct. the idea is during one frame, the path taken is irrelevant as its immediate
+        so delta calc is just delta = quat.to_euler - last_euler. therefore euler = last_euler + delta
+    """
     # pose_bone = bone
     data_path = bone_prefix + "rotation_quaternion"
     frames = frames_matching(action, data_path)
     group = action.groups[bone.name]
-
+    
     for fr in frames:
         quat = bone.rotation_quaternion.copy()
         for fc in action.fcurves:
             if fc.data_path == data_path:
                 quat[fc.array_index] = fc.evaluate(fr)
-        euler = quat.to_euler(order)
+        if prev_quat is None:
+            #fall back to direct conversion if no earlier frame is cached.
+            euler = quat.to_euler(order)
+        else:
+            # Calculate relative rotation from previous frame
+            delta_quat = quat - prev_quat
+            delta_euler = delta_quat.to_euler(order)
+            
+            # Apply delta to previous euler
+            euler = prev_euler.copy()
+            euler.x += delta_euler.x
+            euler.y += delta_euler.y
+            euler.z += delta_euler.z
+        prev_quat = quat
+        prev_euler = euler
 
         add_keyframe_euler(action, euler, fr, bone_prefix, group)
         bone.rotation_mode = order
