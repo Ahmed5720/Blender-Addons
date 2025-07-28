@@ -5,3 +5,5 @@ This simple addon was specifically made for a project in which i needed to make 
 Rigify addon:
 
 keyframe conversion from quat to euler:
+
+TBD.
